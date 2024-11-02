@@ -315,13 +315,21 @@ class SslConnection:
             )
         except OSError as e:
             # OSError is the parent of all (non-TLS) socket/connection errors so it should be last
-            if "Nassl SSL handshake failed" in e.args[0]:
-                # Special error returned by nassl
-                raise ServerRejectedTlsHandshake(
-                    server_location=self._server_location,
-                    network_configuration=self._network_configuration,
-                    error_message="Server interrupted the TLS handshake",
-                )
+            if isinstance(e.args[0], str):
+                if "Nassl SSL handshake failed" in e.args[0]:
+                    # Special error returned by nassl
+                    raise ServerRejectedTlsHandshake(
+                        server_location=self._server_location,
+                        network_configuration=self._network_configuration,
+                        error_message="Server interrupted the TLS handshake",
+                    )
+            elif isinstance(e.args[0], int):
+                if e.args[0] == 101:
+                    raise ConnectionToServerFailed(
+                        server_location=self._server_location,
+                        network_configuration=self._network_configuration,
+                        error_message="Network connectivity loss",
+                    )
             # Unknown connection error
             raise
         except _nassl.OpenSSLError as e:
